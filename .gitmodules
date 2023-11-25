@@ -1,0 +1,3 @@
+[submodule "wingup"]
+	path = wingup
+	url = https://github.com/gup4win/wingup.git
