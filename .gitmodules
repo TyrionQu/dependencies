@@ -7,3 +7,10 @@
 [submodule "opencv"]
 	path = opencv
 	url = https://github.com/opencv/opencv.git
+[submodule "cpython"]
+	path = cpython
+	url = https://github.com/python/cpython.git
+	branch = 3.12
+[submodule "matplotlib"]
+	path = matplotlib
+	url = https://github.com/matplotlib/matplotlib.git
