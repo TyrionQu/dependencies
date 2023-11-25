@@ -1,3 +1,6 @@
 [submodule "wingup"]
 	path = wingup
 	url = https://github.com/gup4win/wingup.git
+[submodule "curl"]
+	path = curl
+	url = https://github.com/curl/curl.git
