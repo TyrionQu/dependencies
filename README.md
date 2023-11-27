@@ -4,7 +4,7 @@ CPython version 3.12
 
 Curl It had been integrated into wingup.
 
-matplotlib This repor is unnecessary, python can install packages by venv and pip.
+matplotlib This repo is unnecessary, python can install packages by venv and pip.
 
 OpenCV version 4.8.2
 
