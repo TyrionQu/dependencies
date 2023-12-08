@@ -1,9 +1,6 @@
 [submodule "wingup"]
 	path = wingup
 	url = https://github.com/gup4win/wingup.git
-[submodule "curl"]
-	path = curl
-	url = https://github.com/curl/curl.git
 [submodule "opencv"]
 	path = opencv
 	url = https://github.com/opencv/opencv.git
@@ -11,6 +8,3 @@
 	path = cpython
 	url = https://github.com/python/cpython.git
 	branch = 3.12
-[submodule "matplotlib"]
-	path = matplotlib
-	url = https://github.com/matplotlib/matplotlib.git
