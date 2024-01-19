@@ -1,6 +1,7 @@
 [submodule "wingup"]
 	path = wingup
-	url = https://github.com/gup4win/wingup.git
+	url = https://github.com/DaisyKid/wingup.git
+	branch = update
 [submodule "opencv"]
 	path = opencv
 	url = https://github.com/opencv/opencv.git
