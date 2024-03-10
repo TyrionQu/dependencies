@@ -8,3 +8,6 @@
 	path = cpython
 	url = https://github.com/python/cpython.git
 	branch = 3.12
+[submodule "erpc"]
+	path = erpc
+	url = https://github.com/EmbeddedRPC/erpc.git
