@@ -11,5 +11,7 @@ OpenCV version 4.8.2
 wingup
 
 erpc: how to build referring to https://blog.csdn.net/baidu_29900103/article/details/129872311
+
 cd erpc_c
+
 make build=release
