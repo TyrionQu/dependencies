@@ -20,7 +20,7 @@ EXE_CFLAGS = -O2 ${WARNS} -I${INC_DIR}
 DLL_CFLAGS = ${EXE_CFLAGS} -D ERPC_CLIENT_EXPORTS
 
 # Linker flags
-DLL_LDFLAGS = -shared -s -Wl,--subsystem,windows,--out-implib,${LIB_DIR}/liberpc_client.a -lstdc++
+DLL_LDFLAGS = -shared -s -Wl,--subsystem,windows,--out-implib,${LIB_DIR}/liberpc_client.a -lstdc++ -lpthread -lws2_32
 
 .PHONY: all clean
 

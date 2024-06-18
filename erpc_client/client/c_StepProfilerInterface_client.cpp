@@ -8,6 +8,8 @@
 #include "c_StepProfilerInterface_client.h"
 #include "StepProfilerInterface_client.hpp"
 #include "erpc_manually_constructed.hpp"
+#include "erpc_client_setup.h"
+#include "erpc_port.h"
 
 using namespace erpc;
 using namespace std;
@@ -25,6 +27,30 @@ StylusProfiler_client *s_StylusProfiler_client = nullptr;
 #else
 ERPC_MANUALLY_CONSTRUCTED_STATIC(StylusProfiler_client, s_StylusProfiler_client);
 #endif
+
+static erpc_transport_t transport = nullptr;
+static erpc_mbf_t erpc_mbf_dynamic = nullptr;
+static erpc_client_t client = nullptr;
+
+int32_t InitInstance()
+{
+    transport = erpc_transport_tcp_init("localhost", 12345, 0);
+    erpc_mbf_dynamic = erpc_mbf_dynamic_init();
+    client = erpc_client_init(transport, erpc_mbf_dynamic);
+    initStepProfiler_client(client);
+    initStylusProfiler_client(client);
+    return 0;
+}
+
+int32_t ExitInstance()
+{
+    deinitStepProfiler_client();
+    deinitStylusProfiler_client();
+    if (client) erpc_client_deinit(client);
+    if (erpc_mbf_dynamic) erpc_mbf_dynamic_deinit(erpc_mbf_dynamic);
+    if (transport) erpc_transport_tcp_close(transport);
+    return 0;
+}
 
 void Z_Home(void)
 {
