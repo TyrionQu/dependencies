@@ -32,9 +32,10 @@ static erpc_transport_t transport = nullptr;
 static erpc_mbf_t erpc_mbf_dynamic = nullptr;
 static erpc_client_t client = nullptr;
 
-int32_t InitInstance()
+int32_t InitInstance(const char *host, uint16_t port)
 {
-    transport = erpc_transport_tcp_init("localhost", 12345, 0);
+    if (host == nullptr) return -1;
+    transport = erpc_transport_tcp_init(host, port, 0);
     erpc_mbf_dynamic = erpc_mbf_dynamic_init();
     client = erpc_client_init(transport, erpc_mbf_dynamic);
     initStepProfiler_client(client);

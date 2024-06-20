@@ -52,7 +52,7 @@ enum _StylusProfiler_ids
 
 //! @name StepProfiler
 //@{
-int32_t InitInstance();
+int32_t InitInstance(const char *host, uint16_t port);
 int32_t ExitInstance();
 
 void Z_Home(void);
