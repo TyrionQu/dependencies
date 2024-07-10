@@ -15,7 +15,7 @@
 #pragma comment(lib, "ws2_32.lib")
 
 #define PORT 12345
-#define BUFFER_SIZE 800 // 100 sets of 2 floats, each float is 4 bytes
+#define BUFFER_SIZE 806 // 100 sets of 2 floats, each float is 4 bytes
 #define DATA_SET_SIZE 8 // 2 floats of 4 bytes each
 
 typedef struct {
@@ -58,10 +58,11 @@ DWORD WINAPI HandleClient(LPVOID lpParam) {
         localIndex = (writeIndex + 1) % 100;
 
         for (int i = 0; i < 100; ++i) {
-            nPos += i * DATA_SET_SIZE;
             memcpy(p + nPos, (const void*) & circularBuffer[localIndex], DATA_SET_SIZE);
             localIndex = (localIndex + 1) % 100;
+            nPos += DATA_SET_SIZE;
         }
+        nPos = 6;
         ReleaseMutex(dataMutex);
 
         send(clientSocket, buffer, BUFFER_SIZE, 0);
