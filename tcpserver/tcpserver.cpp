@@ -25,6 +25,7 @@ typedef struct {
 
 volatile Data circularBuffer[100];
 volatile int writeIndex = 0;
+volatile int readIndex = 0;
 HANDLE dataMutex;
 
 DWORD WINAPI GenerateData(LPVOID lpParam) {
@@ -42,7 +43,6 @@ DWORD WINAPI GenerateData(LPVOID lpParam) {
 DWORD WINAPI HandleClient(LPVOID lpParam) {
     SOCKET clientSocket = *(SOCKET*)lpParam;
     char buffer[BUFFER_SIZE];
-    int localIndex;
     auto p = buffer;
 
     p[0] = 0x5a;
@@ -55,11 +55,11 @@ DWORD WINAPI HandleClient(LPVOID lpParam) {
     auto nPos = 6;
     while (1) {
         WaitForSingleObject(dataMutex, INFINITE);
-        localIndex = (writeIndex + 1) % 100;
+        readIndex = (readIndex + 1) % 100;
 
         for (int i = 0; i < 100; ++i) {
-            memcpy(p + nPos, (const void*) & circularBuffer[localIndex], DATA_SET_SIZE);
-            localIndex = (localIndex + 1) % 100;
+            memcpy(p + nPos, (const void*) & circularBuffer[readIndex], DATA_SET_SIZE);
+            readIndex = (readIndex + 1) % 100;
             nPos += DATA_SET_SIZE;
         }
         nPos = 6;
