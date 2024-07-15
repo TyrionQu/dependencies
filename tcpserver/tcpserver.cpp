@@ -117,43 +117,57 @@ int main() {
     listen(serverSocket, 3);
     printf("Server listening on port %d\n", PORT);
 
-    // Wait for a client to connect
-    if ((clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen)) == INVALID_SOCKET) {
-        printf("Accept failed. Error Code: %d\n", WSAGetLastError());
-        closesocket(serverSocket);
-        WSACleanup();
-        return 1;
-    }
-    printf("Client connected\n");
+    int connCount = 0;
 
-    // Create a mutex for data synchronization
-    dataMutex = CreateMutex(NULL, FALSE, NULL);
-    if (dataMutex == NULL) {
-        printf("CreateMutex error: %d\n", GetLastError());
-        closesocket(clientSocket);
-        closesocket(serverSocket);
-        WSACleanup();
-        return 1;
-    }
+    while (true)
+    {
+        // Wait for a client to connect
+        if ((clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen)) == INVALID_SOCKET) {
+            printf("Accept failed. Error Code: %d\n", WSAGetLastError());
+            closesocket(serverSocket);
+            WSACleanup();
+            return 1;
+        }
+        printf("Client %d connected\n", connCount);
 
-    HANDLE clientThread = CreateThread(NULL, 0, HandleClient, &clientSocket, 0, NULL);
-    if (clientThread == NULL) {
-        printf("CreateThread error: %d\n", GetLastError());
-        CloseHandle(generateDataThread);
-        CloseHandle(dataMutex);
-        closesocket(clientSocket);
-        closesocket(serverSocket);
-        WSACleanup();
-        return 1;
+        if (connCount % 2 == 0)
+        {
+            char okResp[] = "OK";
+            send(clientSocket, okResp, strlen(okResp), 0);
+        }
+        else
+        {
+
+            // Create a mutex for data synchronization
+            dataMutex = CreateMutex(NULL, FALSE, NULL);
+            if (dataMutex == NULL) {
+                printf("CreateMutex error: %d\n", GetLastError());
+                closesocket(clientSocket);
+                closesocket(serverSocket);
+                WSACleanup();
+                return 1;
+            }
+
+            HANDLE clientThread = CreateThread(NULL, 0, HandleClient, &clientSocket, 0, NULL);
+            if (clientThread == NULL) {
+                printf("CreateThread error: %d\n", GetLastError());
+                CloseHandle(generateDataThread);
+                CloseHandle(dataMutex);
+                closesocket(clientSocket);
+                closesocket(serverSocket);
+                WSACleanup();
+                return 1;
+            }
+        }
     }
 
     // Wait for the threads to finish (they won't in this example)
     WaitForSingleObject(generateDataThread, INFINITE);
-    WaitForSingleObject(clientThread, INFINITE);
+    //WaitForSingleObject(clientThread, INFINITE);
 
     // Clean up
     CloseHandle(generateDataThread);
-    CloseHandle(clientThread);
+    //CloseHandle(clientThread);
     CloseHandle(dataMutex);
     closesocket(clientSocket);
     closesocket(serverSocket);
