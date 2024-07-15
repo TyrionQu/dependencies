@@ -66,7 +66,7 @@ DWORD WINAPI HandleClient(LPVOID lpParam) {
         ReleaseMutex(dataMutex);
 
         send(clientSocket, buffer, BUFFER_SIZE, 0);
-        char ack[3];
+        char ack[4] = {0};
         int result = recv(clientSocket, ack, sizeof(ack) - 1, 0);
         if (result <= 0)
         {
