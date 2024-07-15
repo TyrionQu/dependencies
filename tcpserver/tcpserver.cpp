@@ -66,6 +66,14 @@ DWORD WINAPI HandleClient(LPVOID lpParam) {
         ReleaseMutex(dataMutex);
 
         send(clientSocket, buffer, BUFFER_SIZE, 0);
+        char ack[3];
+        int result = recv(clientSocket, ack, sizeof(ack) - 1, 0);
+        if (result <= 0)
+        {
+            printf("Connection abnormal with result %d", result);
+            closesocket(clientSocket);
+            break;
+        }
         Sleep(100); // Send data every 100 milliseconds
     }
     return 0;
