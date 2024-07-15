@@ -159,6 +159,7 @@ int main() {
                 return 1;
             }
         }
+        connCount++;
     }
 
     // Wait for the threads to finish (they won't in this example)
