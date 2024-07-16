@@ -11,6 +11,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <time.h>
+#include <random>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -29,10 +30,13 @@ volatile int readIndex = 0;
 HANDLE dataMutex;
 
 DWORD WINAPI GenerateData(LPVOID lpParam) {
+    std::random_device rd;
+    std::default_random_engine gen(rd());
+    std::uniform_real_distribution<> dis(1000, 5000);
     while (1) {
         WaitForSingleObject(dataMutex, INFINITE);
-        circularBuffer[writeIndex].data1 = (float)rand() / RAND_MAX;
-        circularBuffer[writeIndex].data2 = (float)rand() / RAND_MAX;
+        circularBuffer[writeIndex].data1 = (float)(dis(gen));
+        circularBuffer[writeIndex].data2 = -(float)(dis(gen));
         writeIndex = (writeIndex + 1) % 100;
         ReleaseMutex(dataMutex);
         Sleep(1); // Generate data every 1 millisecond
@@ -74,6 +78,8 @@ DWORD WINAPI HandleClient(LPVOID lpParam) {
             closesocket(clientSocket);
             break;
         }
+        else
+            printf("Receive from client: %s\n", ack);
         Sleep(100); // Send data every 100 milliseconds
     }
     return 0;
