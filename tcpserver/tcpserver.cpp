@@ -44,6 +44,10 @@ DWORD WINAPI GenerateData(LPVOID lpParam) {
     return 0;
 }
 
+DWORD WINAPI ControlCommandThread(LPVOID lpParam) {
+    return 0;
+}
+
 DWORD WINAPI HandleClient(LPVOID lpParam) {
     SOCKET clientSocket = *(SOCKET*)lpParam;
     char buffer[BUFFER_SIZE];
@@ -118,6 +122,17 @@ int main() {
         WSACleanup();
         return 1;
     }
+
+    // Create threads for data generation and client handling
+    HANDLE acceptCtrlCmdThread = CreateThread(NULL, 0, ControlCommandThread, NULL, 0, NULL);
+    if (acceptCtrlCmdThread == NULL) {
+        printf("CreateThread error: %d\n", GetLastError());
+        CloseHandle(dataMutex);
+        closesocket(serverSocket);
+        WSACleanup();
+        return 1;
+    }
+
 
     // Bind the socket
     if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
