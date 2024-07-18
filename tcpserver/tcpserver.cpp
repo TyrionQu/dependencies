@@ -15,7 +15,8 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-#define PORT 12345
+#define CTRL_PORT 12345
+#define DATA_PORT 1003
 #define BUFFER_SIZE 806 // 100 sets of 2 floats, each float is 4 bytes
 #define DATA_SET_SIZE 8 // 2 floats of 4 bytes each
 
@@ -44,11 +45,36 @@ DWORD WINAPI GenerateData(LPVOID lpParam) {
     return 0;
 }
 
-DWORD WINAPI ControlCommandThread(LPVOID lpParam) {
+DWORD WINAPI HandleCtrlClient(LPVOID lpParam) {
+    SOCKET clientSocket = *(SOCKET*)lpParam;
+    char buffer[BUFFER_SIZE];
+    int result;
+
+    while (1) {
+        result = recv(clientSocket, buffer, BUFFER_SIZE, 0);
+        if (result > 0) {
+            buffer[result] = '\0';
+            printf("Received control command: %s\n", buffer);
+
+            // Process control commands here
+            const char* response = "Control command received";
+            send(clientSocket, response, strlen(response), 0);
+        }
+        else if (result == 0) {
+            printf("Control connection closed by client\n");
+            break;
+        }
+        else {
+            printf("Control recv failed. Error Code: %d\n", WSAGetLastError());
+            break;
+        }
+    }
+
+    closesocket(clientSocket);
     return 0;
 }
 
-DWORD WINAPI HandleClient(LPVOID lpParam) {
+DWORD WINAPI HandleDataClient(LPVOID lpParam) {
     SOCKET clientSocket = *(SOCKET*)lpParam;
     char buffer[BUFFER_SIZE];
     auto p = buffer;
@@ -86,33 +112,70 @@ DWORD WINAPI HandleClient(LPVOID lpParam) {
             printf("Receive from client: %s\n", ack);
         Sleep(100); // Send data every 100 milliseconds
     }
+    closesocket(clientSocket);
+    return 0;
+}
+
+DWORD WINAPI CtrlServer(LPVOID lpParam) {
+    SOCKET serverSocket, clientSocket;
+    struct sockaddr_in clientAddr;
+    int clientAddrLen = sizeof(clientAddr);
+
+    serverSocket = *(SOCKET*)lpParam;
+
+    while (1) {
+        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+        if (clientSocket == INVALID_SOCKET) {
+            printf("Control accept failed. Error Code: %d\n", WSAGetLastError());
+            continue;
+        }
+
+        printf("Control client connected from 0x%p\n", (void*)clientSocket);
+
+        HANDLE controlThread = CreateThread(NULL, 0, HandleCtrlClient, &clientSocket, 0, NULL);
+        if (controlThread == NULL) {
+            printf("Control CreateThread failed. Error Code: %d\n", GetLastError());
+            closesocket(clientSocket);
+        }
+        else {
+            CloseHandle(controlThread);
+        }
+    }
+
+    return 0;
+}
+
+DWORD WINAPI DataServer(LPVOID lpParam) {
+    SOCKET serverSocket, clientSocket;
+    struct sockaddr_in clientAddr;
+    int clientAddrLen = sizeof(clientAddr);
+
+    serverSocket = *(SOCKET*)lpParam;
+
+    while (1) {
+        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+        if (clientSocket == INVALID_SOCKET) {
+            printf("Data accept failed. Error Code: %d\n", WSAGetLastError());
+            continue;
+        }
+
+        printf("Data client connected from 0x%p\n", (void *)clientSocket);
+
+        HANDLE dataThread = CreateThread(NULL, 0, HandleDataClient, &clientSocket, 0, NULL);
+        if (dataThread == NULL) {
+            printf("Data CreateThread failed. Error Code: %d\n", GetLastError());
+            closesocket(clientSocket);
+        }
+        else {
+            CloseHandle(dataThread);
+        }
+    }
+
     return 0;
 }
 
 int main() {
     WSADATA wsaData;
-    SOCKET serverSocket, clientSocket;
-    struct sockaddr_in serverAddr, clientAddr;
-    int clientAddrLen = sizeof(clientAddr);
-
-    // Initialize Winsock
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        printf("WSAStartup failed. Error Code: %d\n", WSAGetLastError());
-        return 1;
-    }
-
-    // Create a server socket
-    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
-        printf("Could not create socket. Error Code: %d\n", WSAGetLastError());
-        WSACleanup();
-        return 1;
-    }
-
-    // Prepare the sockaddr_in structure
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(PORT);
-
 
     // Create threads for data generation and client handling
     HANDLE generateDataThread = CreateThread(NULL, 0, GenerateData, NULL, 0, NULL);
@@ -123,84 +186,115 @@ int main() {
         return 1;
     }
 
-    // Create threads for data generation and client handling
-    HANDLE acceptCtrlCmdThread = CreateThread(NULL, 0, ControlCommandThread, NULL, 0, NULL);
-    if (acceptCtrlCmdThread == NULL) {
-        printf("CreateThread error: %d\n", GetLastError());
-        CloseHandle(dataMutex);
-        closesocket(serverSocket);
+    dataMutex = CreateMutex(NULL, FALSE, NULL);
+    if (dataMutex == NULL) {
+        printf("CreateMutex failed. Error code: %d\n", GetLastError());
         WSACleanup();
         return 1;
     }
 
+    SOCKET ctrlSocket, dataSocket;
+    struct sockaddr_in ctrlAddr, dataAddr;
+
+    // Initialize Winsock
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        printf("WSAStartup failed. Error Code: %d\n", WSAGetLastError());
+        return 1;
+    }
+
+    // Create a server socket
+    if ((ctrlSocket = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+        printf("Could not create socket. Error Code: %d\n", WSAGetLastError());
+        WSACleanup();
+        return 1;
+    }
+
+    // Prepare the sockaddr_in structure
+    ctrlAddr.sin_family = AF_INET;
+    ctrlAddr.sin_addr.s_addr = INADDR_ANY;
+    ctrlAddr.sin_port = htons(CTRL_PORT);
 
     // Bind the socket
-    if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+    if (bind(ctrlSocket, (struct sockaddr*)&ctrlAddr, sizeof(ctrlAddr)) == SOCKET_ERROR) {
         printf("Bind failed. Error Code: %d\n", WSAGetLastError());
-        closesocket(serverSocket);
+        closesocket(ctrlSocket);
         WSACleanup();
         return 1;
     }
 
     // Listen for incoming connections
-    listen(serverSocket, 3);
-    printf("Server listening on port %d\n", PORT);
-
-    int connCount = 0;
-
-    while (true)
+    if (listen(ctrlSocket, 3) == SOCKET_ERROR)
     {
-        // Wait for a client to connect
-        if ((clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen)) == INVALID_SOCKET) {
-            printf("Accept failed. Error Code: %d\n", WSAGetLastError());
-            closesocket(serverSocket);
-            WSACleanup();
-            return 1;
-        }
-        printf("Client %d connected\n", connCount);
+        printf("Control listen failed. Error Code: %d\n", WSAGetLastError());
+        closesocket(ctrlSocket);
+        WSACleanup();
+        return 1;
+    }
+    printf("Control server listening on port %d\n", CTRL_PORT);
 
-        if (connCount % 2 == 0)
-        {
-            char okResp[] = "OK";
-            send(clientSocket, okResp, strlen(okResp), 0);
-        }
-        else
-        {
-
-            // Create a mutex for data synchronization
-            dataMutex = CreateMutex(NULL, FALSE, NULL);
-            if (dataMutex == NULL) {
-                printf("CreateMutex error: %d\n", GetLastError());
-                closesocket(clientSocket);
-                closesocket(serverSocket);
-                WSACleanup();
-                return 1;
-            }
-
-            HANDLE clientThread = CreateThread(NULL, 0, HandleClient, &clientSocket, 0, NULL);
-            if (clientThread == NULL) {
-                printf("CreateThread error: %d\n", GetLastError());
-                CloseHandle(generateDataThread);
-                CloseHandle(dataMutex);
-                closesocket(clientSocket);
-                closesocket(serverSocket);
-                WSACleanup();
-                return 1;
-            }
-        }
-        connCount++;
+    // Create data socket
+    dataSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (dataSocket == INVALID_SOCKET) {
+        printf("Data socket creation failed. Error Code: %d\n", WSAGetLastError());
+        closesocket(ctrlSocket);
+        WSACleanup();
+        return 1;
     }
 
-    // Wait for the threads to finish (they won't in this example)
-    WaitForSingleObject(generateDataThread, INFINITE);
-    //WaitForSingleObject(clientThread, INFINITE);
+    // Prepare data sockaddr_in structure
+    dataAddr.sin_family = AF_INET;
+    dataAddr.sin_addr.s_addr = INADDR_ANY;
+    dataAddr.sin_port = htons(DATA_PORT);
 
-    // Clean up
-    CloseHandle(generateDataThread);
-    //CloseHandle(clientThread);
+    // Bind data socket
+    if (bind(dataSocket, (struct sockaddr*)&dataAddr, sizeof(dataAddr)) == SOCKET_ERROR) {
+        printf("Data bind failed. Error Code: %d\n", WSAGetLastError());
+        closesocket(ctrlSocket);
+        closesocket(dataSocket);
+        WSACleanup();
+        return 1;
+    }
+
+    // Listen on data socket
+    if (listen(dataSocket, 3) == SOCKET_ERROR) {
+        printf("Data listen failed. Error Code: %d\n", WSAGetLastError());
+        closesocket(ctrlSocket);
+        closesocket(dataSocket);
+        WSACleanup();
+        return 1;
+    }
+    printf("Data server listening on port %d\n", DATA_PORT);
+
+    // Create control server thread
+    HANDLE ctrlServerThread = CreateThread(NULL, 0, CtrlServer, &ctrlSocket, 0, NULL);
+    if (ctrlServerThread == NULL) {
+        printf("Control server thread creation failed. Error Code: %d\n", GetLastError());
+        closesocket(ctrlSocket);
+        closesocket(dataSocket);
+        WSACleanup();
+        return 1;
+    }
+
+    // Create data server thread
+    HANDLE dataServerThread = CreateThread(NULL, 0, DataServer, &dataSocket, 0, NULL);
+    if (dataServerThread == NULL) {
+        printf("Data server thread creation failed. Error Code: %d\n", GetLastError());
+        closesocket(ctrlSocket);
+        closesocket(dataSocket);
+        WSACleanup();
+        return 1;
+    }
+
+    // Wait for both threads to complete
+    WaitForSingleObject(ctrlServerThread, INFINITE);
+    WaitForSingleObject(dataServerThread, INFINITE);
+
+    // Cleanup
+    CloseHandle(ctrlServerThread);
+    CloseHandle(dataServerThread);
+    closesocket(ctrlSocket);
+    closesocket(dataSocket);
     CloseHandle(dataMutex);
-    closesocket(clientSocket);
-    closesocket(serverSocket);
     WSACleanup();
 
     return 0;
