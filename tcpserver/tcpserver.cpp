@@ -29,6 +29,7 @@ volatile Data circularBuffer[100];
 volatile int writeIndex = 0;
 volatile int readIndex = 0;
 HANDLE dataMutex;
+static bool g_bACK = false;
 
 DWORD WINAPI GenerateData(LPVOID lpParam) {
     std::random_device rd;
@@ -99,17 +100,20 @@ DWORD WINAPI HandleDataClient(LPVOID lpParam) {
         nPos = 6;
         ReleaseMutex(dataMutex);
 
-        send(clientSocket, buffer, BUFFER_SIZE, 0);
-        char ack[4] = {0};
-        int result = recv(clientSocket, ack, sizeof(ack) - 1, 0);
-        if (result <= 0)
+        if (g_bACK)
         {
-            printf("Connection abnormal with result %d", result);
-            closesocket(clientSocket);
-            break;
+            send(clientSocket, buffer, BUFFER_SIZE, 0);
+            char ack[4] = { 0 };
+            int result = recv(clientSocket, ack, sizeof(ack) - 1, 0);
+            if (result <= 0)
+            {
+                printf("Connection abnormal with result %d", result);
+                closesocket(clientSocket);
+                break;
+            }
+            else
+                printf("Receive from client: %s\n", ack);
         }
-        else
-            printf("Receive from client: %s\n", ack);
         Sleep(100); // Send data every 100 milliseconds
     }
     closesocket(clientSocket);
@@ -174,7 +178,13 @@ DWORD WINAPI DataServer(LPVOID lpParam) {
     return 0;
 }
 
-int main() {
+int main(int argc, const char **argv)
+{
+    if (argc == 2)
+    {
+        int nACK = atoi(argv[1]);
+        g_bACK = (nACK == 1) ? true : false;
+    }
     WSADATA wsaData;
 
     // Create threads for data generation and client handling
