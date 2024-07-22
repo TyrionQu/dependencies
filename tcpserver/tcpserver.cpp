@@ -20,9 +20,19 @@
 #define BUFFER_SIZE 806 // 100 sets of 2 floats, each float is 4 bytes
 #define DATA_SET_SIZE 8 // 2 floats of 4 bytes each
 
+typedef union {
+    float  f;
+    char  c[4];
+} FLOAT_UNION;
+
+typedef union {
+    short  i;
+    char  c[4];
+} INT32_UNION;
+
 typedef struct {
-    float data1;
-    float data2;
+    FLOAT_UNION data1;
+    FLOAT_UNION data2;
 } Data;
 
 volatile Data circularBuffer[100];
@@ -37,8 +47,18 @@ DWORD WINAPI GenerateData(LPVOID lpParam) {
     std::uniform_real_distribution<> dis(1000, 5000);
     while (1) {
         WaitForSingleObject(dataMutex, INFINITE);
-        circularBuffer[writeIndex].data1 = (float)(dis(gen));
-        circularBuffer[writeIndex].data2 = -(float)(dis(gen));
+        float f1 = (float)(dis(gen));
+        float f2 = -(float)(dis(gen));
+        char* pf1 = (char*)(&f1);
+        char* pf2 = (char*)(&f2);
+        circularBuffer[writeIndex].data1.c[0] = pf1[0];
+        circularBuffer[writeIndex].data1.c[1] = pf1[1];
+        circularBuffer[writeIndex].data1.c[2] = pf1[2];
+        circularBuffer[writeIndex].data1.c[3] = pf1[3];
+        circularBuffer[writeIndex].data2.c[0] = pf2[0];
+        circularBuffer[writeIndex].data2.c[1] = pf2[1];
+        circularBuffer[writeIndex].data2.c[2] = pf2[2];
+        circularBuffer[writeIndex].data2.c[3] = pf2[3];
         writeIndex = (writeIndex + 1) % 100;
         ReleaseMutex(dataMutex);
         Sleep(1); // Generate data every 1 millisecond
@@ -80,18 +100,20 @@ DWORD WINAPI HandleDataClient(LPVOID lpParam) {
     char buffer[BUFFER_SIZE];
     auto p = buffer;
 
-    p[0] = 0x5a;
-    p[1] = 0x0;
-    p[2] = 0x6e;
     p[3] = 0x03;
     p[4] = 0x20;
     p[5] = 0x0;
 
     auto nPos = 6;
+    int nIndex = 0x123456;
+    char* pIndex = (char*)(&nIndex);
     while (1) {
         WaitForSingleObject(dataMutex, INFINITE);
         readIndex = (readIndex + 1) % 100;
 
+        p[0] = pIndex[1];
+        p[1] = pIndex[2];
+        p[2] = pIndex[0];
         for (int i = 0; i < 100; ++i) {
             memcpy(p + nPos, (const void*) & circularBuffer[readIndex], DATA_SET_SIZE);
             readIndex = (readIndex + 1) % 100;
@@ -101,6 +123,7 @@ DWORD WINAPI HandleDataClient(LPVOID lpParam) {
         ReleaseMutex(dataMutex);
 
         send(clientSocket, buffer, BUFFER_SIZE, 0);
+        nIndex++;
         if (g_bACK)
         {
             char ack[4] = { 0 };
