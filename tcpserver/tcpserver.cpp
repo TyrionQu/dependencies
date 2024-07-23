@@ -99,27 +99,27 @@ DWORD WINAPI HandleDataClient(LPVOID lpParam) {
     SOCKET clientSocket = *(SOCKET*)lpParam;
     char buffer[BUFFER_SIZE];
     auto p = buffer;
-
+    p[0] = 0x5a;
     p[3] = 0x03;
     p[4] = 0x20;
     p[5] = 0x0;
 
-    auto nPos = 6;
-    int nIndex = 0x123456;
+    auto nPos = 5;
+    unsigned short nIndex = 0x3456;
     char* pIndex = (char*)(&nIndex);
     while (1) {
         WaitForSingleObject(dataMutex, INFINITE);
         readIndex = (readIndex + 1) % 100;
 
-        p[0] = pIndex[1];
-        p[1] = pIndex[2];
+        p[1] = pIndex[1];
         p[2] = pIndex[0];
         for (int i = 0; i < 100; ++i) {
             memcpy(p + nPos, (const void*) & circularBuffer[readIndex], DATA_SET_SIZE);
             readIndex = (readIndex + 1) % 100;
             nPos += DATA_SET_SIZE;
         }
-        nPos = 6;
+        p[nPos] = 0xa5;
+        nPos = 5;
         ReleaseMutex(dataMutex);
 
         send(clientSocket, buffer, BUFFER_SIZE, 0);
