@@ -48,11 +48,21 @@ enum _StylusProfiler_ids
     kStylusProfiler_AmplifierTypeSwitch_id = 8,
     kStylusProfiler_SingalCheckSwitch_id = 9,
     kStylusProfiler_DataTx2PcSwitch_id = 10,
+    kStylusProfiler_PwrOn_id = 11,
+    kStylusProfiler_PwrOff_id = 12,
+    kStylusProfiler_TowerDown_id = 13,
+    kStylusProfiler_SingleAcquisition_id = 14,
+    kStylusProfiler_TowerUp_id = 15,
+    kStylusProfiler_TowerHome_id = 16,
+    kStylusProfiler_UnloadSample_id = 17,
+    kStylusProfiler_LoadSample_id = 18,
+    kStylusProfiler_GetSysStatus_id = 19,
+    kStylusProfiler_SetMeasurementPara_id = 20,
 };
 
 //! @name StepProfiler
 //@{
-int32_t InitInstance(const char *host, uint16_t port);
+int32_t InitInstance(const char * host, uint16_t port);
 int32_t ExitInstance();
 
 void Z_Home(void);
@@ -91,6 +101,26 @@ void AmplifierTypeSwitch(uint8_t _type);
 void SingalCheckSwitch(uint8_t _ctrl);
 
 void DataTx2PcSwitch(uint8_t _ctrl);
+
+void PwrOn(void);
+
+void PwrOff(void);
+
+void TowerDown(void);
+
+void SingleAcquisition(void);
+
+void TowerUp(void);
+
+void TowerHome(void);
+
+void UnloadSample(void);
+
+void LoadSample(void);
+
+void GetSysStatus(sysStatus * data);
+
+int8_t SetMeasurementPara(float _sample, float * _speed, float _length, float _duration, float * _resolution);
 //@}
 
 #endif // ERPC_FUNCTIONS_DEFINITIONS

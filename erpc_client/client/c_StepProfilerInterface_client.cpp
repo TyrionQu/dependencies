@@ -32,15 +32,19 @@ static erpc_transport_t transport = nullptr;
 static erpc_mbf_t erpc_mbf_dynamic = nullptr;
 static erpc_client_t client = nullptr;
 
-int32_t InitInstance(const char *host, uint16_t port)
+int32_t InitInstance(const char * host, uint16_t port)
 {
+    int32_t result = 0;
     if (host == nullptr) return -1;
     transport = erpc_transport_tcp_init(host, port, 0);
+    if (transport) result = 1; else return -2;
     erpc_mbf_dynamic = erpc_mbf_dynamic_init();
+    if (erpc_mbf_dynamic) result += 10; else return -3;
     client = erpc_client_init(transport, erpc_mbf_dynamic);
+    if (client) result += 100; else return -4;
     initStepProfiler_client(client);
     initStylusProfiler_client(client);
-    return 0;
+    return result;
 }
 
 int32_t ExitInstance()
@@ -148,6 +152,59 @@ void SingalCheckSwitch(uint8_t _ctrl)
 void DataTx2PcSwitch(uint8_t _ctrl)
 {
     s_StylusProfiler_client->DataTx2PcSwitch(_ctrl);
+}
+
+void PwrOn(void)
+{
+    s_StylusProfiler_client->PwrOn();
+}
+
+void PwrOff(void)
+{
+    s_StylusProfiler_client->PwrOff();
+}
+
+void TowerDown(void)
+{
+    s_StylusProfiler_client->TowerDown();
+}
+
+void SingleAcquisition(void)
+{
+    s_StylusProfiler_client->SingleAcquisition();
+}
+
+void TowerUp(void)
+{
+    s_StylusProfiler_client->TowerUp();
+}
+
+void TowerHome(void)
+{
+    s_StylusProfiler_client->TowerHome();
+}
+
+void UnloadSample(void)
+{
+    s_StylusProfiler_client->UnloadSample();
+}
+
+void LoadSample(void)
+{
+    s_StylusProfiler_client->LoadSample();
+}
+
+void GetSysStatus(sysStatus * data)
+{
+    s_StylusProfiler_client->GetSysStatus(data);
+}
+
+int8_t SetMeasurementPara(float _sample, float * _speed, float _length, float _duration, float * _resolution)
+{
+    int8_t result;
+    result = s_StylusProfiler_client->SetMeasurementPara(_sample, _speed, _length, _duration, _resolution);
+
+    return result;
 }
 
 void initStepProfiler_client(erpc_client_t client)
